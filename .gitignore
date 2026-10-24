@@ -1,0 +1,8 @@
+# Positivliste: nur die Webseite selbst wird versioniert und veröffentlicht.
+# Beispieldateien, Testdateien, Tests und Planungsdokumente bleiben lokal.
+/*
+!/.gitignore
+!/index.html
+!/style.css
+!/README.md
+!/js/

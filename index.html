@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PDF-Extraktion</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <h1>Text und Bilder extrahieren</h1>
+  <p class="intro">PDF, PNG oder JPG hinzufügen. Du bekommst eine ZIP-Datei mit einem Ordner pro Datei: Text als Markdown und alle Bilder. Die Dateien bleiben auf deinem Gerät.</p>
+
+  <p id="loading" class="hint" hidden>Sprachdaten werden geladen (einmalig ca. 10 MB)</p>
+
+  <label id="dropzone" class="dropzone">
+    <span class="dropzone-title">Dateien hier ablegen</span>
+    <span class="dropzone-or">oder</span>
+    <span class="button secondary">Dateien auswählen</span>
+    <input id="picker" type="file" multiple accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg">
+  </label>
+
+  <div id="notices" class="notices" aria-live="polite"></div>
+
+  <ul id="files" class="files"></ul>
+
+  <div class="actions">
+    <button id="extract" class="button" type="button" disabled>Extrahieren</button>
+    <button id="download" class="button" type="button" hidden>ZIP herunterladen</button>
+  </div>
+  <p id="summary" class="summary" aria-live="polite"></p>
+</main>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
