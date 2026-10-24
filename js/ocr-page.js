@@ -33,8 +33,8 @@ async function crop(canvas, box) {
 }
 
 // Blöcke mit y in Canvas-Pixeln; Bild-index wird vom Aufrufer vergeben.
-export async function ocrCanvas(canvas, ocr) {
-  const { lines } = await ocr.recognize(canvas);
+export async function ocrCanvas(canvas, ocr, signal) {
+  const { lines } = await ocr.recognize(canvas, signal);
   const { figures, textLines } = detectFigures(lines, { width: canvas.width, height: canvas.height }, toGrayGrid(canvas));
   const images = [];
   for (const f of figures) images.push({ type: 'image', index: 0, blob: await crop(canvas, f), ext: 'png', y: f.y0 });

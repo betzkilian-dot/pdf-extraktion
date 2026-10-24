@@ -43,11 +43,22 @@ export function createOcr({ onLoading = () => {}, langPath, startTimeout = 18000
   }
 
   return {
-    async recognize(source) {
+    // signal (AbortSignal): bricht auch eine laufende Erkennung ab; der Worker wird dabei beendet
+    // (eine laufende Erkennung lässt sich nicht anhalten), der nächste Aufruf startet einen neuen.
+    async recognize(source, signal) {
+      signal?.throwIfAborted();
       workerPromise ??= start();
-      const w = await workerPromise;
+      const aborted = signal && new Promise((_, reject) => signal.addEventListener('abort', () => reject(signal.reason), { once: true }));
+      const race = promise => (aborted ? Promise.race([promise, aborted]) : promise);
+      let w;
       try {
-        const { data } = await withTimeout(w.recognize(source, {}, { blocks: true, text: true }), recognizeTimeout, 'Texterkennung hat zu lange gedauert');
+        w = await race(workerPromise);
+      } catch (err) {
+        if (err?.name === 'AbortError') await terminate();
+        throw err;
+      }
+      try {
+        const { data } = await race(withTimeout(w.recognize(source, {}, { blocks: true, text: true }), recognizeTimeout, 'Texterkennung hat zu lange gedauert'));
         const lines = (data.blocks ?? []).flatMap(b => b.paragraphs.flatMap(p => p.lines)).map(l => ({
           text: l.text.trim(),
           confidence: l.confidence,
@@ -57,7 +68,7 @@ export function createOcr({ onLoading = () => {}, langPath, startTimeout = 18000
         return { text: data.text, lines };
       } catch (err) {
         // Hängender Worker wird verworfen; die nächste Seite startet einen neuen.
-        if (err.message === 'Texterkennung hat zu lange gedauert') await terminate();
+        if (err.name === 'AbortError' || err.message === 'Texterkennung hat zu lange gedauert') await terminate();
         throw err;
       }
     },

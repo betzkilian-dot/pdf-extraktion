@@ -85,7 +85,8 @@ export function groupTextItems(items, pageHeight) {
   for (const line of visible) {
     const heading = line.size >= 1.3 * medianSize;
     const gap = prevLine ? prevLine.baseline - line.baseline : 0;
-    const limit = medianGap !== null ? 1.5 * medianGap : 2 * line.size;
+    // Bei wenig Text ist der mittlere Abstand riesig; mehr als 3 Zeilenhöhen trennen immer.
+    const limit = Math.min(medianGap !== null ? 1.5 * medianGap : 2 * line.size, 3 * line.size);
     const startNew = !current
       || current.heading !== heading
       || (heading && Math.abs(current.size - line.size) > 0.5)
@@ -179,8 +180,31 @@ export function mergeByY(textBlocks, imageBlocks) {
   return result;
 }
 
+// Faktor 3 ≈ 216 dpi: liest kleine Schrift deutlich besser als 2, braucht aber noch moderate Zeit auf dem iPad.
 export function renderScale(width, height) {
-  return Math.min(2, MAX_CANVAS_SIDE / Math.max(width, height));
+  return Math.min(3, MAX_CANVAS_SIDE / Math.max(width, height));
+}
+
+const CAPTION = /^((?:Abb(?:ildung)?|Bild|Fig(?:ure)?|Tab(?:elle)?)\.?\s*\d+[a-z]?\s*[:.\-–]?\s*)(.*)$/is;
+
+// Erster Satz einer Bildunterschrift ("Abb. 3: Schaltplan."), höchstens 120 Zeichen.
+function captionOf(block) {
+  if (block?.type !== 'paragraph') return null;
+  const m = CAPTION.exec(block.text);
+  if (!m) return null;
+  const rest = m[2].match(/^.*?[.!?](?=\s|$)/s)?.[0] ?? m[2];
+  const alt = (m[1] + rest).trim();
+  return alt.length > 120 ? alt.slice(0, 120).replace(/\s+\S*$/, '') : alt;
+}
+
+// Setzt image.alt aus der direkt darunter (sonst darüber) stehenden Bildunterschrift.
+export function attachCaptions(blocks) {
+  blocks.forEach((b, i) => {
+    if (b.type !== 'image') return;
+    const alt = captionOf(blocks[i + 1]) ?? captionOf(blocks[i - 1]);
+    if (alt) b.alt = alt;
+  });
+  return blocks;
 }
 
 export function fitWithin(width, height, max = MAX_CANVAS_SIDE) {

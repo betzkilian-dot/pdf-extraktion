@@ -24,9 +24,19 @@
 
   <ul id="files" class="files"></ul>
 
+  <label class="check"><input id="text-only" type="checkbox"> Nur Text (ohne Bilder)</label>
+
+  <div id="overall" class="overall" hidden>
+    <progress id="overall-bar" max="1" value="0" aria-label="Gesamtfortschritt"></progress>
+    <span id="overall-text"></span>
+  </div>
+
   <div class="actions">
     <button id="extract" class="button" type="button" disabled>Extrahieren</button>
+    <button id="cancel" class="button secondary" type="button" hidden>Abbrechen</button>
     <button id="download" class="button" type="button" hidden>ZIP herunterladen</button>
+    <button id="share" class="button" type="button" hidden>In Dateien sichern</button>
+    <button id="clear" class="button secondary" type="button" hidden>Liste leeren</button>
   </div>
   <p id="summary" class="summary" aria-live="polite"></p>
 </main>
