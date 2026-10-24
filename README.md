@@ -4,6 +4,8 @@ Webseite, die aus PDF-, PNG- und JPG-Dateien den Text und die Bilder herauslöst
 
 Läuft in Chrome, Edge und Firefox sowie in Safari auf dem iPad (iPadOS 17 oder neuer).
 
+**Zur Webseite:** https://betzkilian-dot.github.io/pdf-extraktion/
+
 ## Lokal starten
 
 ```
@@ -14,7 +16,7 @@ Dann `http://localhost:8080/` öffnen. Ein Server ist nötig, weil die JavaScrip
 
 ## Tests
 
-`http://localhost:8080/tests.html` im Browser öffnen. Mit `tests.html?ocr=1` laufen zusätzlich die Tests mit echter Texterkennung (lädt beim ersten Mal ca. 10 MB Sprachdaten).
+Die Tests liegen nur in der lokalen Arbeitskopie, nicht in diesem Repository. `http://localhost:8080/tests.html` im Browser öffnen. Mit `tests.html?ocr=1` laufen zusätzlich die Tests mit echter Texterkennung (lädt beim ersten Mal ca. 10 MB Sprachdaten).
 
 Ohne Browserfenster (Edge, Server muss laufen):
 
@@ -26,4 +28,4 @@ node tests/e2e.mjs <zielordner> <datei1> [datei2 …]   # Oberfläche durchspiel
 
 ## Veröffentlichen
 
-Auf GitHub Pages hochladen: `index.html`, `style.css`, `js/`, `README.md`. **Nicht** hochladen: `testdateien/`, `tests/`, `tests.html`, die Beispieldateien und die Planungsdokumente.
+Die `.gitignore` ist eine Positivliste: Versioniert werden nur `index.html`, `style.css`, `js/` und `README.md`. Änderungen committen und mit `git push` hochladen, GitHub Pages aktualisiert die Seite nach etwa einer Minute.
