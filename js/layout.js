@@ -143,7 +143,8 @@ function multiply(m, n) {
   ];
 }
 
-export function imagePlacements(fnArray, argsArray, ops, pageHeight) {
+// cover = Anteil der Seitenfläche, den das Bild bedeckt (1 = ganze Seite, typisch für Scans).
+export function imagePlacements(fnArray, argsArray, ops, pageWidth, pageHeight) {
   let ctm = [1, 0, 0, 1, 0, 0];
   const stack = [];
   const seen = new Set();
@@ -158,8 +159,11 @@ export function imagePlacements(fnArray, argsArray, ops, pageHeight) {
       if (seen.has(name)) return;
       seen.add(name);
       if (width < MIN_IMAGE_SIZE || height < MIN_IMAGE_SIZE) return;
-      const top = Math.max(...[[0, 0], [1, 0], [0, 1], [1, 1]].map(([x, y]) => ctm[1] * x + ctm[3] * y + ctm[5]));
-      result.push({ name, y: pageHeight - top, width, height });
+      const corners = [[0, 0], [1, 0], [0, 1], [1, 1]];
+      const xs = corners.map(([x, y]) => ctm[0] * x + ctm[2] * y + ctm[4]);
+      const ys = corners.map(([x, y]) => ctm[1] * x + ctm[3] * y + ctm[5]);
+      const area = (Math.max(...xs) - Math.min(...xs)) * (Math.max(...ys) - Math.min(...ys));
+      result.push({ name, y: pageHeight - Math.max(...ys), width, height, cover: area / (pageWidth * pageHeight) });
     }
   });
   return result;
@@ -173,15 +177,6 @@ export function mergeByY(textBlocks, imageBlocks) {
     result.splice(at === -1 ? result.length : at, 0, img);
   }
   return result;
-}
-
-export function ocrTextToBlocks(text) {
-  return text
-    .split(/\n\s*\n/)
-    .map(par => par.split('\n').map(l => l.trim()).filter(Boolean).reduce((acc, l) => (acc ? joinLines(acc, l) : l), ''))
-    .map(t => t.replace(/\s+/g, ' ').trim())
-    .filter(Boolean)
-    .map(t => ({ type: 'paragraph', text: t }));
 }
 
 export function renderScale(width, height) {

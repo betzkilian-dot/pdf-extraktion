@@ -1,10 +1,13 @@
 import * as pdfjs from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs';
-import { isTextPage, groupTextItems, imagePlacements, mergeByY, ocrTextToBlocks, renderScale, fitWithin } from './layout.js';
+import { isTextPage, groupTextItems, imagePlacements, mergeByY, renderScale, fitWithin } from './layout.js';
+import { ocrCanvas, numberImages } from './ocr-page.js';
 import { toRGBA } from './pixels.js';
 import { splitName } from './naming.js';
 import { describeError, sizeWarning } from './messages.js';
 
 pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';
+
+const SCAN_COVER = 0.5;
 
 const OPS = {
   save: pdfjs.OPS.save,
@@ -49,13 +52,17 @@ async function imageToPng(obj) {
   }
 }
 
+// Liefert Blöcke mit y in PDF-Punkten (wie die eingebetteten Bilder).
 async function recognizePage(page, ocr) {
   const base = page.getViewport({ scale: 1 });
-  const viewport = page.getViewport({ scale: renderScale(base.width, base.height) });
+  const scale = renderScale(base.width, base.height);
+  const viewport = page.getViewport({ scale });
   const canvas = newCanvas(Math.floor(viewport.width), Math.floor(viewport.height));
   try {
     await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
-    return ocrTextToBlocks(await ocr.recognize(canvas));
+    const blocks = await ocrCanvas(canvas, ocr);
+    for (const b of blocks) b.y /= scale;
+    return blocks;
   } finally {
     release(canvas);
   }
@@ -69,9 +76,9 @@ async function readPage(page, number, total, ocr, onProgress, counters) {
   const ops = await page.getOperatorList();
 
   const images = [];
-  for (const p of imagePlacements(ops.fnArray, ops.argsArray, OPS, viewport.height)) {
+  for (const p of imagePlacements(ops.fnArray, ops.argsArray, OPS, viewport.width, viewport.height)) {
     try {
-      images.push({ type: 'image', index: 0, blob: await imageToPng(await getImageObject(page, p.name)), ext: 'png', y: p.y });
+      images.push({ type: 'image', index: 0, blob: await imageToPng(await getImageObject(page, p.name)), ext: 'png', y: p.y, cover: p.cover });
     } catch {
       counters.skipped++;
     }
@@ -80,18 +87,19 @@ async function readPage(page, number, total, ocr, onProgress, counters) {
   if (isTextPage(items.map(i => i.str).join(''))) {
     result.blocks = mergeByY(groupTextItems(items, viewport.height), images);
   } else {
-    // Scan: Bilder (meist das Seitenbild) vorn, wie bei Fotos als Eingabe.
+    // Scan: Das Seitenbild (≥ halbe Seite) wird durch die ausgeschnittenen Abbildungen ersetzt;
+    // scheitert die Texterkennung, bleibt es als Ersatz erhalten.
     result.ocr = true;
     result.blocks = images;
     onProgress({ page: number, total, stage: 'ocr' });
     try {
-      result.blocks = [...images, ...await recognizePage(page, ocr)];
+      result.blocks = mergeByY(await recognizePage(page, ocr), images.filter(i => i.cover < SCAN_COVER));
     } catch (err) {
       result.error = describeError(err);
     }
   }
-  let index = 0;
-  for (const b of result.blocks) if (b.type === 'image') b.index = ++index;
+  for (const b of result.blocks) delete b.cover;
+  numberImages(result.blocks);
   return result;
 }
 

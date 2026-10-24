@@ -9,6 +9,7 @@ function withTimeout(promise, ms, message) {
   ]).finally(() => clearTimeout(timer));
 }
 
+// recognize liefert {text, lines}; jede Zeile mit text, confidence, bbox {x0,y0,x1,y1} und words.
 // Ein Worker für alle Seiten eines Durchgangs; er startet erst, wenn er gebraucht wird.
 // Scheitert der Start, schlagen alle weiteren Aufrufe sofort fehl (kein Neustart pro Seite).
 // langPath überschreibt die Herkunft der Sprachdaten (Standard: CDN von Tesseract.js).
@@ -46,8 +47,14 @@ export function createOcr({ onLoading = () => {}, langPath, startTimeout = 18000
       workerPromise ??= start();
       const w = await workerPromise;
       try {
-        const { data } = await withTimeout(w.recognize(source), recognizeTimeout, 'Texterkennung hat zu lange gedauert');
-        return data.text;
+        const { data } = await withTimeout(w.recognize(source, {}, { blocks: true, text: true }), recognizeTimeout, 'Texterkennung hat zu lange gedauert');
+        const lines = (data.blocks ?? []).flatMap(b => b.paragraphs.flatMap(p => p.lines)).map(l => ({
+          text: l.text.trim(),
+          confidence: l.confidence,
+          bbox: l.bbox,
+          words: l.words.map(wd => ({ text: wd.text, confidence: wd.confidence })),
+        }));
+        return { text: data.text, lines };
       } catch (err) {
         // Hängender Worker wird verworfen; die nächste Seite startet einen neuen.
         if (err.message === 'Texterkennung hat zu lange gedauert') await terminate();

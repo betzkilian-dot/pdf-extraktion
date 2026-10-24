@@ -1,6 +1,7 @@
 import { splitName } from './naming.js';
-import { fitWithin, ocrTextToBlocks } from './layout.js';
+import { fitWithin } from './layout.js';
 import { describeError } from './messages.js';
+import { ocrCanvas, numberImages } from './ocr-page.js';
 
 // createImageBitmap wendet die EXIF-Ausrichtung an – wichtig für Handyfotos.
 async function toCanvas(file) {
@@ -14,16 +15,19 @@ async function toCanvas(file) {
   return canvas;
 }
 
+// Ergebnis: erkannter Text plus ausgeschnittene Abbildungen. Nur wenn die Texterkennung
+// scheitert, wird das Originalfoto als Ganzes übernommen, damit nichts verloren geht.
 export async function readImage(file, ocr, onProgress) {
   const { base, ext } = splitName(file.name);
-  const page = { number: 1, ocr: true, error: null, blocks: [{ type: 'image', index: 1, blob: file, ext, pageImage: true }] };
+  const page = { number: 1, ocr: true, error: null, blocks: [] };
   onProgress({ page: 1, total: 1, stage: 'ocr' });
   let canvas = null;
   try {
     canvas = await toCanvas(file);
-    page.blocks.push(...ocrTextToBlocks(await ocr.recognize(canvas)));
+    page.blocks = numberImages(await ocrCanvas(canvas, ocr));
   } catch (err) {
     page.error = describeError(err);
+    page.blocks = [{ type: 'image', index: 1, blob: file, ext, pageImage: true }];
   } finally {
     if (canvas) canvas.width = canvas.height = 0;
   }
